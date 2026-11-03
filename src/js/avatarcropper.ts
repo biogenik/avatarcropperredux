@@ -596,7 +596,7 @@ export class AvatarCropper extends Widget {
     }
 
     private handleResize(): void {
-        let previewWidth = this.isBannerShape ? 0 : this.previews.width
+        let previewWidth = this.previews.width
         let sideWidth = Math.max(
             previewWidth,
             this.menu.getBoundingClientRect().width,
