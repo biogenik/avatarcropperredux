@@ -1,4 +1,12 @@
-# Avatar Cropper
+# Avatar Cropper Redux
+
+A fork and updated version of Avatar Cropper by Sapic (https://github.com/sapic/avatarcropper/tree/master). 
+
+Added features include:
+
+Ability to resize/move banner cropper with it's own dimensions, untied to avatar dimensions.
+
+Added Server Banner functionality.
 
 ## Installation Instructions:
 
