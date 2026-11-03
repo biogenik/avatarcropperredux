@@ -8,14 +8,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: gh-pages-deploy
+  group: gh-pages
   cancel-in-progress: true
 
 jobs:
-  build-test:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -34,44 +34,16 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Verify build output
+      - name: Verify build
         run: |
-          if [ ! -d dist ]; then
-            echo "Error: dist directory not found!"
+          test -f dist/index.html || {
+            echo "Build output dist/index.html not found"
             exit 1
-          fi
-
-          if [ ! -f dist/index.html ]; then
-            echo "Error: dist/index.html not found!"
-            exit 1
-          fi
+          }
 
       - name: Deploy to gh-pages
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-
-          chmod 700 ~/.ssh
-          chmod 600 ~/.ssh/id_rsa
-
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_rsa
-
-          git config --global user.email "actions@users.noreply.github.com"
-          git config --global user.name "ActionsBot"
-
-          cd dist
-
-          git init
-          git add -A
-          git commit -m "Deploying ${GITHUB_SHA}"
-
-          git remote add origin \
-            "git@github.com:${GITHUB_REPOSITORY}.git"
-
-          git push origin HEAD:gh-pages --force
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
