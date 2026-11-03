@@ -26,10 +26,10 @@ export class TutorialDialog extends ClosableDialog {
         let body = createElement("div");
         body.innerHTML =
             "Hello, you can resize the cropping area by dragging on the "
-            + "\"corners\" of the circle/square.<br>"
-            + "<img src='" + tutImage + "' class='image'><br>"
-            + "Thank you, this has been the tutorial.<br>"
-            + "Please leave feedback or donate with the links at the bottom!";
+            + "\"corners\" of the circle/square/rectangle.<br>"
+            + "To move the cropping area, click and drag anywhere inside the circle/square/rectangle.<br>"
+            + "Server Banner format can be used for both Server Banner and Server Invite banner, both are 16:9.<br>"
+            + "Please submit any issues or feature requests to the Github repo linked below.";
 
         body.innerHTML += "<br><br>" +
             "<b>Privacy Policy: </b>";
