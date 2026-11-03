@@ -721,10 +721,6 @@ body, .bigOverlay
     #link-whatsNew
         display none
 
-@media (max-width 770px)
-    #link-discord
-        display none
-
 @media (max-width 700px)
     #link-help
         display none
