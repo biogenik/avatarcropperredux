@@ -10,7 +10,6 @@ import { Settings } from "./avatarcropper";
 
 import SuperGif from './supergif.js'
 import GIF from './gif.js'
-import { Rectangle } from "./rectangle";
 
 interface CropOption {
     label: string;
@@ -87,13 +86,12 @@ export class Renderer extends ClosableDialog {
             this.renderGif();
         }
         else {
-            this.getFrameURLs(this.cropView.image, false, true,false, this.display.bind(this));
+            this.getFrameURLs(this.cropView.image, false, true, this.display.bind(this));
             this.currentlyRendering = false;
         }
     }
 
     private renderGif(): void {
-        const bannerArea = this.useLinkedBanner ? this.cropView.linkedBannerArea : null;
         let gif = new SuperGif({
             gif: this.cropView.image.cloneNode()
         });
@@ -112,8 +110,8 @@ export class Renderer extends ClosableDialog {
                 workers: 3,
                 quality: 1,
                 dither: false,
-                width: bannerArea ? bannerArea.width : this.cropView.cropArea.width,
-                height: bannerArea ? bannerArea.height : this.cropView.cropArea.height,
+                width: this.cropView.cropArea.width,
+                height: this.cropView.cropArea.height,
                 debug: false,
                 copy: true
             });
@@ -124,7 +122,7 @@ export class Renderer extends ClosableDialog {
             let renderFrame = (i: number) => {
                 gif.move_to(i);
 
-                this.getFrameURLs(gif.get_canvas(), true, false,true, (options) => {
+                this.getFrameURLs(gif.get_canvas(), true, false, (options) => {
                     let img = new Image();
                     img.addEventListener("load", () => {
                         if (this.shouldStopRendering) {
@@ -190,19 +188,12 @@ export class Renderer extends ClosableDialog {
         return this.settings.previewMode === "banner";
     }
 
-    // the banner derived from the avatar crop (Circle / Square modes only) //
-    private get useLinkedBanner(): boolean {
-        return this.settings.banneroutlinesEnabled && !this.bannerMode;
-    }
-
-    private getFrameURLs(frame: Canvas | HTMLImageElement | HTMLCanvasElement, pixelated: boolean, getCircle: boolean, isGif: Boolean, callback: (options: CropOption[]) => void): void {
+    private getFrameURLs(frame: Canvas | HTMLImageElement | HTMLCanvasElement, pixelated: boolean, getCircle: boolean, callback: (options: CropOption[]) => void): void {
         const bannerMode = this.bannerMode;
-        const linkedBanner = this.useLinkedBanner;
         const wantCircle = getCircle && !bannerMode;
-        const wantLinkedBannerOption = linkedBanner && !isGif;
 
         let ret: CropOption[] = [];
-        let expectedLength = 1 + (wantCircle ? 1 : 0) + (wantLinkedBannerOption ? 1 : 0);
+        let expectedLength = wantCircle ? 2 : 1;
         let counter = 0;
         let check = (url: string, label: string, index: number) => {
             counter++;
@@ -235,7 +226,7 @@ export class Renderer extends ClosableDialog {
 
         // main output: the crop area (a square avatar, or the banner in banner mode).
         // For GIFs with the banner guideline on, the frames are the linked banner area instead //
-        const mainRect = (linkedBanner && isGif) ? this.cropView.linkedBannerArea : this.cropView.cropArea;
+        const mainRect = this.cropView.cropArea
 
         let squareCrop = new Canvas({
             size: mainRect.size,
@@ -271,21 +262,6 @@ export class Renderer extends ClosableDialog {
 
             circleCrop.createBlob((blob: Blob) => {
                 check(URL.createObjectURL(blob), "Circle", 1);
-            });
-        }
-
-        if (wantLinkedBannerOption) {
-            let bannerarea = this.cropView.linkedBannerArea;
-            let BannerCrop = new Canvas({
-                size: bannerarea.size,
-                pixelated: pixelated
-            });
-
-            BannerCrop.drawCroppedImage(rc, new Point(0), bannerarea);
-
-            BannerCrop.drawImage(borderCanvas, new Point(0));
-            BannerCrop.createBlob((blob: Blob) => {
-                check(URL.createObjectURL(blob), "Discord Banner", wantCircle ? 2 : 1);
             });
         }
     }

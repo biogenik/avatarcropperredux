@@ -24,9 +24,7 @@ import { GradientEditButton } from './gradientedit'
 export interface Settings {
     previewSizes: number[]
     maskOpacity: number
-    previewMode: 'circle' | 'square'| 'banner'
-    outlinesEnabled: boolean
-    banneroutlinesEnabled: boolean
+    previewMode: 'circle' | 'square'| 'banner' | 'serverbanner'
     antialias: boolean
     dismissedTutorial: boolean
     dismissedIE: boolean
@@ -43,7 +41,6 @@ export class AvatarCropper extends Widget {
 
     private menu: HTMLElement
     private openFileLabel: HTMLElement
-    private maskOutlineButton: HTMLElement
     private guidesButton: HTMLElement
     private toggleMenuButton: HTMLElement
     private flipHButton: HTMLElement
@@ -60,8 +57,6 @@ export class AvatarCropper extends Widget {
         previewSizes: [30, 40, 64, 128],
         maskOpacity: 0.5,
         previewMode: 'circle',
-        outlinesEnabled: true,
-        banneroutlinesEnabled: false,
         antialias: true,
         dismissedTutorial: false,
         dismissedIE: false,
@@ -165,9 +160,6 @@ export class AvatarCropper extends Widget {
             }
         }
 
-
-        AvatarCropper.settings.banneroutlinesEnabled = false
-
         AvatarCropper.saveSettings();
     }
 
@@ -212,28 +204,21 @@ export class AvatarCropper extends Widget {
         this.menu.appendChild(this.toggleMenuButton)
 
     
-        const shapeModes: { label: string, mode: Settings['previewMode'], cls: string }[] = [
-            { label: 'Circle', mode: 'circle', cls: 'half lefthalf' },
-            { label: 'Square', mode: 'square', cls: 'half righthalf' },
-            { label: 'Banner', mode: 'banner', cls: '' },
+        const shapeModes: { label: string, mode: Settings['previewMode'], cls: string, title: string }[] = [
+            { label: 'Circle', mode: 'circle', cls: 'half lefthalf', title: 'Avatar, circular preview' },
+            { label: 'Square', mode: 'square', cls: 'half righthalf', title: 'Avatar, square preview' },
+            { label: 'Banner', mode: 'banner', cls: '', title: 'Discord profile banner (17:6)' },
+            { label: 'Server Banner', mode: 'serverbanner', cls: '', title: 'Discord server banner (16:9)' }
         ]
-        shapeModes.forEach(({ label, mode, cls }) => {
+        shapeModes.forEach(({ label, mode, cls, title }) => {
             let b = createElement('button', ('open item shapeToggle ' + cls).trim())
             b.innerText = label
+            b.title = title
             b.classList.toggle('toggled', AvatarCropper.settings.previewMode === mode)
             b.addEventListener('click', () => this.setShapeMode(mode))
             this.shapeButtons.push({ mode, el: b })
             this.menu.appendChild(b)
         })
-
-        this.maskOutlineButton = createElement('button', 'item')
-        this.maskOutlineButton.innerText = 'Avatar Guidelines'
-        this.maskOutlineButton.addEventListener(
-            'click',
-            this.toggleMaskOutline.bind(this, true),
-        )
-        this.toggleMaskOutline(false)
-        this.menu.appendChild(this.maskOutlineButton)
         
 
         let tSlider = new LabelSlider(
@@ -429,6 +414,10 @@ export class AvatarCropper extends Widget {
         this.appendChild(this.menu)
     }
 
+    private get isBannerShape(): boolean {
+        return AvatarCropper.settings.previewMode === 'banner' || AvatarCropper.settings.previewMode === 'serverbanner'
+    }
+
     private setShapeMode(mode: Settings['previewMode']): void {
         this.shapeButtons.forEach(({ mode: m, el }) => el.classList.toggle('toggled', m === mode))
         this.cropView.setMode(mode)
@@ -438,7 +427,7 @@ export class AvatarCropper extends Widget {
 
     private applyShapeUI(): void {
         this.previews.container.style.display =
-            AvatarCropper.settings.previewMode === 'banner' ? 'none' : ''
+            this.isBannerShape ? 'none' : ''
         this.handleResize()
     }
 
@@ -467,7 +456,7 @@ export class AvatarCropper extends Widget {
             this.cropView.cropArea.height +
             '\n' +
             'Enter in a size either by specifying a number (like 64) or a percentage of width (50%w) or height (50%h)' +
-            (AvatarCropper.settings.previewMode === 'banner' ? '\n(In banner mode this sets the banner width; height follows the 2.5:1 ratio.)' : '')
+            (AvatarCropper.settings.previewMode === 'banner' ? '\n(In banner mode this sets the banner width; height follows the banner ratio.)' : '')
 
         let sizeStr = window.prompt(promptStr)
         if (sizeStr === null || isNaN(parseInt(sizeStr))) {
@@ -529,21 +518,6 @@ export class AvatarCropper extends Widget {
 
     private renderCroppedImage(): void {
         this.cropView.renderCroppedImage()
-    }
-
-    private toggleMaskOutline(actuallyToggle: boolean = true): void {
-        if (actuallyToggle) {
-            AvatarCropper.settings.outlinesEnabled = !AvatarCropper.settings.outlinesEnabled
-        }
-
-        if (AvatarCropper.settings.outlinesEnabled) {
-            this.maskOutlineButton.classList.add('toggled')
-        } else {
-            this.maskOutlineButton.classList.remove('toggled')
-        }
-
-        this.cropView && this.cropView.update("mask outline")
-        AvatarCropper.saveSettings();
     }
 
     private toggleGuides(actuallyToggle: boolean = true): void {
@@ -622,7 +596,7 @@ export class AvatarCropper extends Widget {
     }
 
     private handleResize(): void {
-        let previewWidth = AvatarCropper.settings.previewMode === 'banner' ? 0 : this.previews.width
+        let previewWidth = this.isBannerShape ? 0 : this.previews.width
         let sideWidth = Math.max(
             previewWidth,
             this.menu.getBoundingClientRect().width,
