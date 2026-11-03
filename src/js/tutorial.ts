@@ -27,7 +27,7 @@ export class TutorialDialog extends ClosableDialog {
         body.innerHTML =
             "Hello, you can resize the cropping area by dragging on the "
             + "\"corners\" of the circle/square.<br>"
-            + + "<img src='" + tutImage + "' class='image'><br>"
+            + "<img src='" + tutImage + "' class='image'><br>"
             + "Thank you, this has been the tutorial.<br>"
             + "Please leave feedback or donate with the links at the bottom!";
 
