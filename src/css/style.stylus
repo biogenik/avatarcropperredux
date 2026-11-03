@@ -230,7 +230,7 @@ body, .bigOverlay
     box-sizing border-box
 
 .save
-    background linear-gradient(45deg, #F2FF00 0%, #9A8D13 100%)
+    background linear-gradient(45deg, #0084ff 0%, #13749a 100%)
     animation gradient 3s ease infinite
     background-size 200% 100%
     animation-direction alternate
@@ -361,7 +361,7 @@ body, .bigOverlay
     width: 246px
     margin 0 auto 10px 0
     position relative
-    background linear-gradient(45deg, #f2ff00 0%, #9a8d13 100%)
+    background linear-gradient(45deg, #0084ff 0%, #13749a 100%)
     filter blur(12px)
     animation gradient 3s ease infinite
     background-size 200% 100%
@@ -487,7 +487,7 @@ body, .bigOverlay
     padding 0
 
 .menu .item.render, .menu .item > button.render
-    background linear-gradient(45deg, #F2FF00 0%, #9A8D13 100%)
+    background linear-gradient(45deg, #0084ff 0%, #13749a 100%)
     animation gradient 3s ease infinite
     background-size 200% 100%
     animation-direction alternate
