@@ -10,6 +10,9 @@ import { Drawer } from "./drawer";
 
 type MouseAction = "move" | "resize" | "new" | "none";
 
+// width / height of a Discord banner (the old derived banner was 3.75w x 1.5w) //
+export const BANNER_RATIO = 2.8333;
+
 class Circle extends Rectangle {
     private cropView: CropView;
     private _origin: Rectangle;
@@ -30,7 +33,15 @@ class Circle extends Rectangle {
 
     public reset(): void {
         this.position = new Point(0);
-        this.size = new Point(this.cropView.outerRect.size.min / 2);
+
+        if (this.cropView.isBannerMode) {
+            const o = this.cropView.outerSize;
+            const w = Math.min(o.x, o.y * BANNER_RATIO) / 2;
+            this.size = new Point(w, w / BANNER_RATIO);
+        }
+        else {
+            this.size = new Point(this.cropView.outerRect.size.min / 2);
+        }
     }
 
     public get rectangle(): Rectangle {
@@ -99,6 +110,8 @@ export class CropView extends Drawer {
     private readonly renderer: Renderer;
     private loadingImage: boolean = false;
     private antialiased: boolean;
+    // last crop size used in each shape, so switching modes back and forth doesn't shrink it //
+    private savedSizes: { banner?: Point, avatar?: Point } = {};
 
     constructor(settingsObject: Settings) {
         super(createElement("div", "cropView"));
@@ -179,6 +192,58 @@ export class CropView extends Drawer {
         return this.circle.rectangle;
     }
 
+    // true when the crop rectangle itself is the banner (no avatar involved) //
+    public get isBannerMode(): boolean {
+        return this.settings.previewMode === "banner";
+    }
+
+    // the banner guideline overlay only makes sense when the crop area is an avatar //
+    private get showLinkedBanner(): boolean {
+        return this.settings.banneroutlinesEnabled && !this.isBannerMode;
+    }
+
+    // banner region derived from the avatar crop (Circle / Square modes) //
+    public get linkedBannerArea(): Rectangle {
+        const w = this.circle.width;
+        return new Rectangle(
+            new Point(this.circle.left - (w / 5 + w / 13.33), this.circle.cy - w * 1.5),
+            new Point(w * 3.75, w * 1.5)
+        );
+    }
+
+    public setMode(mode: Settings["previewMode"]): void {
+        const wasBanner = this.isBannerMode;
+        this.settings.previewMode = mode;
+        const nowBanner = this.isBannerMode;
+
+        // reshape the crop area when switching between square-ish and banner //
+        if (wasBanner !== nowBanner && this.image.src) {
+            const center = this.circle.center.copy();
+
+            // remember the size we're leaving so switching back restores it //
+            this.savedSizes[wasBanner ? "banner" : "avatar"] = this.circle.size.copy();
+
+            const saved = this.savedSizes[nowBanner ? "banner" : "avatar"];
+            if (saved) {
+                this.circle.size = saved.copy();
+            }
+            else if (nowBanner) {
+                // first time: same height as the square, 2.5x as wide //
+                const h = this.circle.height;
+                this.circle.size = new Point(h * BANNER_RATIO, h);
+            }
+            else {
+                // first time: square as tall as the banner //
+                this.circle.size = new Point(this.circle.height);
+            }
+
+            this.circle.center = center;
+            this.circle.validate();
+        }
+
+        this.update("mode change");
+    }
+
     public get zoomFactor(): number {
         return this._zoomFactor;
     }
@@ -209,18 +274,15 @@ export class CropView extends Drawer {
             else {
                 this.overlay.fillRect(this.circle, "white");
             }
-            if (this.settings.banneroutlinesEnabled) {
-                this.overlay.fillRect(
-                    new Rectangle(new Point(this.circle.left - (this.circle.width / 5 + this.circle.width / 13.33), this.circle.cy - (this.circle.width * 1.5)), new Point(this.circle.width * 3.75, this.circle.width * 1.5)),
-                    "white"
-                )
+            if (this.showLinkedBanner) {
+                this.overlay.fillRect(this.linkedBannerArea, "white");
             }
         }
 
         this.overlay.blendMode = "source-over";
         let lineWidth = ~~(1 / this.zoomFactor) + 1;
 
-        if (this.settings.outlinesEnabled) {
+        if (this.settings.outlinesEnabled || (this.isBannerMode && this.settings.banneroutlinesEnabled)) {
             let sharp = lineWidth % 2 === 1;
 
             this.overlay.lineDash = [Math.min(this.overlay.width, this.overlay.height) / 100];
@@ -240,7 +302,7 @@ export class CropView extends Drawer {
             );
         }
 
-        if (this.settings.banneroutlinesEnabled) {
+        if (this.showLinkedBanner) {
             let sharp = lineWidth % 2 === 1;
 
             this.overlay.lineDash = [Math.min(this.overlay.width, this.overlay.height) / 100];
@@ -257,15 +319,16 @@ export class CropView extends Drawer {
             ); */
             
             
+        const banner = this.linkedBannerArea;
         this.overlay.context.beginPath()
-        this.overlay.context.moveTo(this.circle.left - (this.circle.width / 5 + this.circle.width / 13.33), this.circle.cy)
+        this.overlay.context.moveTo(banner.left, this.circle.cy)
         this.overlay.context.lineTo(this.circle.left, this.circle.cy)
         this.overlay.context.arc(this.circle.center.x, this.circle.center.y, this.circle.width / 2, Math.PI, 1.5 * Math.PI, false)
         this.overlay.context.arc(this.circle.center.x, this.circle.center.y, this.circle.width / 2, 1.5 * Math.PI, 2 * Math.PI, false)
-        this.overlay.context.lineTo(this.circle.right + (this.circle.width * 2.4) + (this.circle.width / 13.33), this.circle.cy)
-        this.overlay.context.lineTo(this.circle.right + (this.circle.width * 2.4) + (this.circle.width / 13.33), this.circle.cy - (this.circle.width * 1.5))
-        this.overlay.context.lineTo(this.circle.left - (this.circle.width / 5 + this.circle.width / 13.33), this.circle.cy - (this.circle.width * 1.5))
-        this.overlay.context.lineTo(this.circle.left - (this.circle.width / 5 + this.circle.width / 13.33), this.circle.cy)
+        this.overlay.context.lineTo(banner.right, this.circle.cy)
+        this.overlay.context.lineTo(banner.right, banner.top)
+        this.overlay.context.lineTo(banner.left, banner.top)
+        this.overlay.context.lineTo(banner.left, this.circle.cy)
         this.overlay.context.lineWidth = lineWidth
         this.overlay.context.strokeStyle = "yellow"
         this.overlay.context.stroke()
@@ -559,6 +622,7 @@ export class CropView extends Drawer {
         this.image.src = image.src;
 
         this.circle.reset();
+        this.savedSizes = {};
         this.zoomFit(true, false);
         this.rotate(0, false);
 
@@ -631,7 +695,9 @@ export class CropView extends Drawer {
     }
 
     public setCropSize(size: number): void {
-        this.circle.size = new Point(size);
+        this.circle.size = this.isBannerMode
+            ? new Point(size, size / BANNER_RATIO)
+            : new Point(size);
         this.circle.validate();
         this.update("set crop size");
     }
@@ -651,6 +717,14 @@ export class CropView extends Drawer {
                 grabbing(this.circle.bottomLeft, new Point(handleSize, -handleSize)) ||
                 grabbing(this.circle.bottomRight, -handleSize)
             );*/
+
+            if (this.isBannerMode) {
+                // rectangle: grab a corner to resize //
+                const hs = this.circle.size.min / 4;
+                const nearX = Math.min(x - this.circle.left, this.circle.right - x) < hs;
+                const nearY = Math.min(y - this.circle.top, this.circle.bottom - y) < hs;
+                return nearX && nearY ? "resize" : "move";
+            }
 
             let grabbingHandle = this.circle.center.distanceTo(new Point(x, y)) >= this.circle.radius.x;
 
@@ -711,6 +785,10 @@ export class CropView extends Drawer {
         }
 
         this.circle.round(this.settings.resizeLock); // u rite
+        if (this.isBannerMode) {
+            this.circle.height = Math.round(this.circle.width / BANNER_RATIO);
+            this.circle.validate();
+        }
         this.update("mouse move");
     }
 

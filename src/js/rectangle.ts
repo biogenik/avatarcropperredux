@@ -129,7 +129,7 @@ export class Rectangle
         let center = this.center.copy(); // just being careful
         let size = this.size.copy();
 
-        if (ar > 1)
+        if (ar > this.aspectRatio)
         {
             // wider //
             this.height *= rect.width / this.width;
@@ -174,7 +174,7 @@ export class Rectangle
         let ar = rect.aspectRatio;
         let startPoint = this.getPointFromAnchor(anchor).copy();
 
-        if (ar > 1)
+        if (ar > this.aspectRatio)
         {
             // wider //
             this.height *= rect.width / this.width;

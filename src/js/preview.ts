@@ -19,7 +19,7 @@ export class Preview extends Drawer {
     private removeButton: HTMLElement;
     private _size: Point;
     private cropView: CropView;
-    private lastMode: "square" | "circle" | "none" = "none";
+    private lastMode: "square" | "circle" | "banner" | "none" = "none";
     private antialiased: boolean;
 
     constructor(size: Point, cropView: CropView) {
