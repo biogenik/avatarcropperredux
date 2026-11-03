@@ -4,6 +4,11 @@ import { ClosableDialog } from "./closabledialog";
 export class WhatsNewDialog extends ClosableDialog {
     private list =
         {
+            "November 2026":
+                [
+                    "Improved banner support, allowing free movement and resizing of the crop area detached from avatar dimensions.",
+                    "Added a new 'serverbanner' preview mode for server banners.",
+                ],
             "October 2022":
                 [
                     "Holy heck, a brand new feature! You can now crop Discord profile banners right here! Isn't that just sooo cool!?",
