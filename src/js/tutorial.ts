@@ -1,6 +1,7 @@
 import { ClosableDialog } from "./closabledialog";
 import { createElement } from "./util";
 import { PRIVACYPOLICY } from "./privacypolicy";
+import tutImage from "url:../images/tut.png";
 
 export class TutorialDialog extends ClosableDialog {
     constructor() {
@@ -26,12 +27,12 @@ export class TutorialDialog extends ClosableDialog {
         body.innerHTML =
             "Hello, you can resize the cropping area by dragging on the "
             + "\"corners\" of the circle/square.<br>"
-            + "<img src='" + require('../images/tut.png') + "' class='image'><br>"
+            + + "<img src='" + tutImage + "' class='image'><br>"
             + "Thank you, this has been the tutorial.<br>"
             + "Please leave feedback or donate with the links at the bottom!";
 
         body.innerHTML += "<br><br>" +
-            "<b>also this site use cookie if u use it u agree to cookie ";
+            "<b>Privacy Policy: </b>";
 
         body.appendChild(learnMore);
 

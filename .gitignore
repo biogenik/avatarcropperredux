@@ -3,6 +3,7 @@ ignore
 node_modules
 .cache
 *.d.ts
+!src/js/images.d.ts
 *.tsbuildinfo
 .vscode/settings.json
 dist/
