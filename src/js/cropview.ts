@@ -12,6 +12,8 @@ type MouseAction = "move" | "resize" | "new" | "none";
 
 // width / height of a Discord banner (the old derived banner was 3.75w x 1.5w) //
 export const BANNER_RATIO = 2.8333;
+export const SERVER_BANNER_RATIO = 16 / 9;
+export const SERVER_BANNER_MIN = new Point(960, 540);
 
 class Circle extends Rectangle {
     private cropView: CropView;
@@ -35,9 +37,10 @@ class Circle extends Rectangle {
         this.position = new Point(0);
 
         if (this.cropView.isBannerMode) {
+            const ratio = this.cropView.bannerRatio;
             const o = this.cropView.outerSize;
-            const w = Math.min(o.x, o.y * BANNER_RATIO) / 2;
-            this.size = new Point(w, w / BANNER_RATIO);
+            const w = Math.min(o.x, o.y * ratio) / 2;
+            this.size = new Point(w, w / ratio);
         }
         else {
             this.size = new Point(this.cropView.outerRect.size.min / 2);
@@ -111,7 +114,7 @@ export class CropView extends Drawer {
     private loadingImage: boolean = false;
     private antialiased: boolean;
     // last crop size used in each shape, so switching modes back and forth doesn't shrink it //
-    private savedSizes: { banner?: Point, avatar?: Point } = {};
+    private savedSizes: { banner?: Point, serverbanner?: Point, avatar?: Point } = {};
 
     constructor(settingsObject: Settings) {
         super(createElement("div", "cropView"));
@@ -193,26 +196,50 @@ export class CropView extends Drawer {
     }
 
     public get isBannerMode(): boolean {
-        return this.settings.previewMode === "banner";
+        return this.settings.previewMode === "banner" || this.settings.previewMode === "serverbanner";
+    }
+
+    public get bannerRatio(): number {
+        return this.settings.previewMode === "serverbanner" ? SERVER_BANNER_RATIO : BANNER_RATIO;
+    }
+
+    // min crop in image pixels, capped to what the image can hold at 16:9 //
+    public get minCropSize(): Point {
+        if (this.settings.previewMode !== "serverbanner") return new Point(0);
+        const o = this.outerSize;
+        const w = Math.min(SERVER_BANNER_MIN.x, o.x, o.y * SERVER_BANNER_RATIO);
+        return new Point(w, w / SERVER_BANNER_RATIO);
+    }
+
+    private shapeKey(mode: Settings["previewMode"]): "banner" | "serverbanner" | "avatar" {
+        return mode === "banner" || mode === "serverbanner" ? mode : "avatar";
+    }
+
+    private enforceMinSize(): void {
+        const min = this.minCropSize;
+        if (min.x > 0 && this.circle.width < min.x) {
+            const center = this.circle.center.copy();
+            this.circle.size = new Point(min.x, min.x / this.bannerRatio);
+            this.circle.center = center;
+        }
     }
 
     public setMode(mode: Settings["previewMode"]): void {
-        const wasBanner = this.isBannerMode;
+        const oldKey = this.shapeKey(this.settings.previewMode);
         this.settings.previewMode = mode;
-        const nowBanner = this.isBannerMode;
+        const newKey = this.shapeKey(mode);
 
-        if (wasBanner !== nowBanner && this.image.src) {
+        if (oldKey !== newKey && this.image.src) {
             const center = this.circle.center.copy();
+            this.savedSizes[oldKey] = this.circle.size.copy();
 
-            this.savedSizes[wasBanner ? "banner" : "avatar"] = this.circle.size.copy();
-
-            const saved = this.savedSizes[nowBanner ? "banner" : "avatar"];
+            const saved = this.savedSizes[newKey];
             if (saved) {
                 this.circle.size = saved.copy();
             }
-            else if (nowBanner) {
+            else if (this.isBannerMode) {
                 const h = this.circle.height;
-                this.circle.size = new Point(h * BANNER_RATIO, h);
+                this.circle.size = new Point(h * this.bannerRatio, h);
             }
             else {
                 this.circle.size = new Point(this.circle.height);
@@ -633,28 +660,14 @@ export class CropView extends Drawer {
 
     public setCropSize(size: number): void {
         this.circle.size = this.isBannerMode
-            ? new Point(size, size / BANNER_RATIO)
+            ? new Point(size, size / this.bannerRatio)
             : new Point(size);
         this.circle.validate();
         this.update("set crop size");
     }
 
     private getMouseAction(x: number, y: number): MouseAction {
-        let mousePoint = new Point(x, y);
         if (this.circle.containsPoint(new Point(x, y))) {
-            // this logic for non-square crop area (aspect ratio != 1:1)
-            /*let handleSize = this.circle.radius.min / 2;
-            let _rb = (p1, p2) => Rectangle.between(p1, p2);
-            let _con = (r : Rectangle) => r.containsPoint(mousePoint);
-            let grabbing = (p1 : Point, toAdd : Point | number) => _con(_rb(p1, p1.plus(toAdd)));
-            
-            let grabbingHandle = (
-                grabbing(this.circle.topLeft, handleSize) ||
-                grabbing(this.circle.topRight, new Point(-handleSize, handleSize)) ||
-                grabbing(this.circle.bottomLeft, new Point(handleSize, -handleSize)) ||
-                grabbing(this.circle.bottomRight, -handleSize)
-            );*/
-
             if (this.isBannerMode) {
                 // rectangle: grab a corner to resize //
                 const hs = this.circle.size.min / 4;
@@ -723,7 +736,7 @@ export class CropView extends Drawer {
 
         this.circle.round(this.settings.resizeLock); // u rite
         if (this.isBannerMode) {
-            this.circle.height = Math.round(this.circle.width / BANNER_RATIO);
+            this.circle.height = Math.round(this.circle.width / this.bannerRatio);
             this.circle.validate();
         }
         this.update("mouse move");

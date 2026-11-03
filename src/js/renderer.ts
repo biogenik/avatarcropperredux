@@ -185,7 +185,7 @@ export class Renderer extends ClosableDialog {
     }
 
     private get bannerMode(): boolean {
-        return this.settings.previewMode === "banner";
+        return this.settings.previewMode === "banner" || this.settings.previewMode === "serverbanner";
     }
 
     private getFrameURLs(frame: Canvas | HTMLImageElement | HTMLCanvasElement, pixelated: boolean, getCircle: boolean, callback: (options: CropOption[]) => void): void {
@@ -240,7 +240,8 @@ export class Renderer extends ClosableDialog {
         }
 
         squareCrop.createBlob((blob: Blob) => {
-            check(URL.createObjectURL(blob), bannerMode ? "Banner" : "Square", 0);
+            check(URL.createObjectURL(blob),
+                this.settings.previewMode === "serverbanner" ? "Server Banner" : bannerMode ? "Banner" : "Avatar", 0);
         });
 
         if (wantCircle) {
